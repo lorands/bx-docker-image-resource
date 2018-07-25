@@ -1,8 +1,23 @@
-# Docker Image Resource
+# Bluemix Docker Image Resource
 
-Tracks and builds [Docker](https://docker.io) images.
+Build/push/pull docker image to IBM Cloud (Bluemix) Private Repository (https://console.bluemix.net/containers-kubernetes/registry/private)
 
-Note: docker registry must be [v2](https://docs.docker.com/registry/spec/api/).
+Note: This is a fork/hack of the original Docker Image Resource. (https://github.com/concourse/docker-image-resource)
+
+It is by no mean complete: 
+
+* Testing removed (skiped)
+* Serves single need
+
+## Resource type
+```
+resource_types:
+- name: bx-docker-image
+  type: docker-image
+  privileged: true
+  source:
+    repository: lorands/bx-docker-image-resource
+```
 
 ## Source Configuration
 
@@ -14,86 +29,26 @@ Note: docker registry must be [v2](https://docs.docker.com/registry/spec/api/).
 
 * `tag`: *Optional.* The tag to track. Defaults to `latest`.
 
-* `username`: *Optional.* The username to authenticate with when pushing.
+* `username`: *Required.* The username to authenticate with when pushing.
 
-* `password`: *Optional.* The password to use when authenticating.
+* `password`: *Required.* The password to use when authenticating.
 
-* `aws_access_key_id`: *Optional.* AWS access key to use for acquiring ECR
-  credentials.
+* `api_endpoint`: *Required.* The API endpoint to Bluemix.
 
-* `aws_secret_access_key`: *Optional.* AWS secret key to use for acquiring ECR
-  credentials.
+* `bx_account`: *Required.* Account number in Bluemix.
 
-* `aws_session_token`: *Optional.* AWS session token (assumed role) to use for acquiring ECR
-  credentials.
 
-* `insecure_registries`: *Optional.* An array of CIDRs or `host:port` addresses
-  to whitelist for insecure access (either `http` or unverified `https`).
-  This option overrides any entries in `ca_certs` with the same address.
+```
+  - name: bx-docker-image-sample
+    type: bx-docker-image
+    source:
+      repository: registry.eu-de.bluemix.net/myns/sample
+      username: ((cf-user))
+      password: ((cf-pass))
+      api_endpoint: https://api.eu-de.bluemix.net
+      bx_account: XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
 
-* `registry_mirror`: *Optional.* A URL pointing to a docker registry mirror service.
-
-* `ca_certs`: *Optional.* An array of objects with the following format:
-
-  ```yaml
-  ca_certs:
-  - domain: example.com:443
-    cert: |
-      -----BEGIN CERTIFICATE-----
-      ...
-      -----END CERTIFICATE-----
-  - domain: 10.244.6.2:443
-    cert: |
-      -----BEGIN CERTIFICATE-----
-      ...
-      -----END CERTIFICATE-----
-  ```
-
-  Each entry specifies the x509 CA certificate for the trusted docker registry
-  residing at the specified domain. This is used to validate the certificate of
-  the docker registry when the registry's certificate is signed by a custom
-  authority (or itself).
-
-  The domain should match the first component of `repository`, including the
-  port. If the registry specified in `repository` does not use a custom cert,
-  adding `ca_certs` will break the check script. This option is overridden by
-  entries in `insecure_registries` with the same address or a matching CIDR.
-
-* `client_certs`: *Optional.* An array of objects with the following format:
-
-  ```yaml
-  client_certs:
-  - domain: example.com:443
-    cert: |
-      -----BEGIN CERTIFICATE-----
-      ...
-      -----END CERTIFICATE-----
-    key: |
-      -----BEGIN RSA PRIVATE KEY-----
-      ...
-      -----END RSA PRIVATE KEY-----
-  - domain: 10.244.6.2:443
-    cert: |
-      -----BEGIN CERTIFICATE-----
-      ...
-      -----END CERTIFICATE-----
-    key: |
-      -----BEGIN RSA PRIVATE KEY-----
-      ...
-      -----END RSA PRIVATE KEY-----
-  ```
-
-  Each entry specifies the x509 certificate and key to use for authenticating
-  against the docker registry residing at the specified domain. The domain
-  should match the first component of `repository`, including the port.
-
- * `max_concurrent_downloads`: *Optional.* Maximum concurrent downloads.
-
-   Limits the number of concurrent download threads.
-
- * `max_concurrent_uploads`: *Optional.* Maximum concurrent uploads.
-
-   Limits the number of concurrent upload threads.
 
 ## Behavior
 
@@ -233,77 +188,3 @@ version is the image's digest.
   Only supported for multi-stage Docker builds
 
 
-## Example
-
-``` yaml
-resources:
-- name: git-resource
-  type: git
-  source: # ...
-
-- name: git-resource-image
-  type: docker-image
-  source:
-    repository: concourse/git-resource
-    username: username
-    password: password
-
-- name: git-resource-rootfs
-  type: s3
-  source: # ...
-
-jobs:
-- name: build-rootfs
-  plan:
-  - get: git-resource
-  - put: git-resource-image
-    params: {build: git-resource}
-    get_params: {rootfs: true}
-  - put: git-resource-rootfs
-    params: {file: git-resource-image/rootfs.tar}
-```
-
-## Development
-
-### Prerequisites
-
-* golang is *required* - version 1.9.x is tested; earlier versions may also
-  work.
-* docker is *required* - version 17.06.x is tested; earlier versions may also
-  work.
-
-### Running the tests
-
-The tests have been embedded with the `Dockerfile`; ensuring that the testing
-environment is consistent across any `docker` enabled platform. When the docker
-image builds, the test are run inside the docker container, on failure they
-will stop the build.
-
-Build the image and run the tests with the following command:
-
-```sh
-docker build -t docker-image-resource .
-```
-
-To use the newly built image, push it to a docker registry that's accessible to
-Concourse and configure your pipeline to use it:
-
-```yaml
-resource_types:
-- name: docker-image-resource
-  type: docker-image
-  privileged: true
-  source:
-    repository: example.com:5000/docker-image-resource
-    tag: latest
-
-resources:
-- name: some-image
-  type: docker-image-resource
-  ...
-```
-
-### Contributing
-
-Please make all pull requests to the `master` branch and ensure tests pass
-locally.

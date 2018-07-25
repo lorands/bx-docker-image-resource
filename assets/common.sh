@@ -113,12 +113,19 @@ log_in() {
   local password="$2"
   local registry="$3"
 
-  if [ -n "${username}" ] && [ -n "${password}" ]; then
-    echo "${password}" | docker login -u "${username}" --password-stdin ${registry}
-  else
-    mkdir -p ~/.docker
-    echo '{"credsStore":"ecr-login"}' >> ~/.docker/config.json
-  fi
+  local bx_account="$4"
+  local api_endpoint="$5"
+
+  # if [ -n "${username}" ] && [ -n "${password}" ]; then
+  #   echo "${password}" | docker login -u "${username}" --password-stdin ${registry}
+  # else
+  #   mkdir -p ~/.docker
+  #   echo '{"credsStore":"ecr-login"}' >> ~/.docker/config.json
+  # fi
+
+  bx login -a $api_endpoint -u $username -p $password -c $bx_account
+
+  bx cr login
 }
 
 private_registry() {
